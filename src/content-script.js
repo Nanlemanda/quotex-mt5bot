@@ -4,19 +4,15 @@
  */
 
 const BotConfig = {
-  putButtonSelectors: [
-    'button[class*="put"]',
-    'button[data-action="put"]',
-    '[aria-label*="Put"]',
-    '.put-btn',
-    '#putBtn'
+  upButtonSelectors: [
+    'button[aria-label="Up"]',
+    'button[class*="KtjVk"][aria-label="Up"]',
+    '.KtjVk[aria-label="Up"]'
   ],
-  callButtonSelectors: [
-    'button[class*="call"]',
-    'button[data-action="call"]',
-    '[aria-label*="Call"]',
-    '.call-btn',
-    '#callBtn'
+  downButtonSelectors: [
+    'button[aria-label="Down"]',
+    'button[class*="twQq3"][aria-label="Down"]',
+    '.twQq3[aria-label="Down"]'
   ],
   tradeDelayMs: 100,
   retryAttempts: 3
@@ -57,18 +53,20 @@ async function executeTradeSignal(signal) {
 }
 
 /**
- * Click PUT or CALL button
+ * Click UP or DOWN button
  */
 async function clickTradeButton(tradeType) {
-  const selectors = tradeType.toUpperCase() === 'CALL' 
-    ? BotConfig.callButtonSelectors 
-    : BotConfig.putButtonSelectors;
+  const selectors = tradeType.toUpperCase() === 'CALL' || tradeType.toUpperCase() === 'UP'
+    ? BotConfig.upButtonSelectors
+    : BotConfig.downButtonSelectors;
   
   for (let attempt = 0; attempt < BotConfig.retryAttempts; attempt++) {
     for (const selector of selectors) {
       const button = document.querySelector(selector);
       
       if (button && isVisible(button)) {
+        console.log(`[Quotex Bot] Found button with selector: ${selector}`);
+        
         // Simulate user click
         button.click();
         
@@ -87,6 +85,7 @@ async function clickTradeButton(tradeType) {
     await sleep(100);
   }
   
+  console.warn(`[Quotex Bot] Could not find button with selectors:`, selectors);
   return false;
 }
 
