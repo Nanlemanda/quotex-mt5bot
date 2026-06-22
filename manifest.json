@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Quotex MT5 Bot",
+  "version": "1.0.0",
+  "description": "Auto-trade on Quotex based on MT5 signals",
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "webRequest",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://quotex.io/*",
+    "https://*.quotex.io/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://quotex.io/*",
+        "https://*.quotex.io/*"
+      ],
+      "js": ["src/content-script.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "Quotex MT5 Bot"
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  }
+}
