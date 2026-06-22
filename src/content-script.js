@@ -13,20 +13,9 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 }
 
 const BotConfig = {
-  // UP/CALL button: contains <span class="oQ4Z4">Up</span>
-  upButtonSelectors: [
-    'button.KtjVk.JQZcs._5qIw.LzVPu',
-    'button:has(> span.oQ4Z4:contains("Up"))',
-    'button.JQZcs:first-of-type'
-  ],
-  // DOWN/PUT button: contains <span class="oQ4Z4">Down</span>
-  downButtonSelectors: [
-    'button.KtjVk.twQq3._5qIw.LzVPu',
-    'button:has(> span.oQ4Z4:contains("Down"))',
-    'button.twQq3:first-of-type'
-  ],
   tradeDelayMs: 100,
-  retryAttempts: 3
+  retryAttempts: 3,
+  waitForButtonsMs: 5000 // Wait up to 5 seconds for buttons to appear
 };
 
 console.log('[Quotex Bot] Content script loaded');
@@ -34,25 +23,46 @@ console.log('[Quotex Bot] Content script loaded');
 // Helper function to find button by text content
 function findButtonByText(text) {
   const buttons = document.querySelectorAll('button');
+  console.log(`[Quotex Bot] Searching for "${text}" button among ${buttons.length} buttons`);
+  
   for (let btn of buttons) {
     const spans = btn.querySelectorAll('span.oQ4Z4');
     for (let span of spans) {
       if (span.textContent.trim() === text) {
+        console.log(`[Quotex Bot] ✅ Found "${text}" button!`);
         return btn;
       }
     }
   }
+  
+  console.log(`[Quotex Bot] ❌ Could not find "${text}" button`);
   return null;
 }
 
-// Log all buttons on the page for debugging
-console.log('[Quotex Bot] Debugging: Found', document.querySelectorAll('button').length, 'total buttons');
+// Wait for buttons to appear on page
+async function waitForButtons() {
+  console.log('[Quotex Bot] Waiting for buttons to load on page...');
+  
+  const startTime = Date.now();
+  while (Date.now() - startTime < BotConfig.waitForButtonsMs) {
+    const upBtn = findButtonByText('Up');
+    const downBtn = findButtonByText('Down');
+    
+    if (upBtn && downBtn) {
+      console.log('[Quotex Bot] ✅ Both buttons found! Ready to trade.');
+      return true;
+    }
+    
+    // Wait a bit before checking again
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  
+  console.warn('[Quotex Bot] ⚠️ Buttons did not appear within timeout');
+  return false;
+}
 
-// Try to find UP and DOWN buttons by text
-const upBtn = findButtonByText('Up');
-const downBtn = findButtonByText('Down');
-console.log('[Quotex Bot] UP button found by text:', upBtn ? '✅ YES' : '❌ NO');
-console.log('[Quotex Bot] DOWN button found by text:', downBtn ? '✅ YES' : '❌ NO');
+// Wait for buttons when page loads
+waitForButtons();
 
 // Listen for signals from background script
 if (typeof chrome !== 'undefined' && chrome.runtime) {
@@ -81,10 +91,10 @@ async function executeTradeSignal(signal) {
     const success = await clickTradeButton(type);
     
     if (success) {
-      console.log(`[Quotex Bot] ${type} button clicked successfully`);
+      console.log(`[Quotex Bot] ✅ ${type} button clicked successfully`);
       logTradeExecution(signal);
     } else {
-      console.warn(`[Quotex Bot] Failed to click ${type} button`);
+      console.warn(`[Quotex Bot] ❌ Failed to click ${type} button`);
     }
   } catch (error) {
     console.error('[Quotex Bot] Error executing signal:', error);
@@ -98,14 +108,14 @@ async function clickTradeButton(tradeType) {
   const isCall = tradeType.toUpperCase() === 'CALL' || tradeType.toUpperCase() === 'UP';
   const targetText = isCall ? 'Up' : 'Down';
   
-  console.log(`[Quotex Bot] Looking for button with text: "${targetText}"`);
+  console.log(`[Quotex Bot] Attempting to click "${targetText}" button...`);
   
   for (let attempt = 0; attempt < BotConfig.retryAttempts; attempt++) {
     // Try to find button by text content (most reliable)
     const button = findButtonByText(targetText);
     
     if (button && isVisible(button)) {
-      console.log(`[Quotex Bot] Found ${targetText} button by text search`);
+      console.log(`[Quotex Bot] Found ${targetText} button! Clicking...`);
       
       // Simulate user click
       button.click();
@@ -135,6 +145,7 @@ async function clickTradeButton(tradeType) {
  * Check if element is visible
  */
 function isVisible(element) {
+  if (!element) return false;
   return element.offsetParent !== null && 
          element.offsetHeight !== 0 && 
          element.offsetWidth !== 0 &&
@@ -177,8 +188,11 @@ window.botTestCall = () => executeTradeSignal({ type: 'CALL' });
 window.botTestPut = () => executeTradeSignal({ type: 'PUT' });
 window.botFindUpButton = () => findButtonByText('Up');
 window.botFindDownButton = () => findButtonByText('Down');
+window.botGetAllButtons = () => document.querySelectorAll('button').length;
+
 console.log('[Quotex Bot] Test functions available:');
 console.log('  - window.botTestCall() : Execute CALL signal');
 console.log('  - window.botTestPut() : Execute PUT signal');
 console.log('  - window.botFindUpButton() : Find UP button');
 console.log('  - window.botFindDownButton() : Find DOWN button');
+console.log('  - window.botGetAllButtons() : Count all buttons on page');
